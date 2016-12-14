@@ -13,7 +13,7 @@ module Data.Fingerprint (
 , fp
 ) where
 
-import           Control.DeepSeq (NFData(rnf))
+import           Control.DeepSeq (NFData(rnf), ($!!))
 import           Crypto.Hash
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString as B
@@ -26,7 +26,7 @@ import           Data.Maybe (fromJust)
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Quote
 import           Language.Haskell.TH.Syntax
-import           System.IO.Unsafe (unsafePerformIO)
+import           System.IO.Unsafe
 import           Foreign.Marshal.Utils (with)
 import           Foreign.C.Types
 import           Foreign.Ptr (castPtr)
@@ -44,8 +44,9 @@ instance NFData a => NFData (WithFingerprint a) where
 class HasFingerprint o where
   fingerprint :: o -> Fingerprint
   default fingerprint :: Storable o => o -> Fingerprint
-  fingerprint o = unsafePerformIO $ with o $ \oPtr ->
-    fingerprint <$> BS.unsafePackCStringLen (castPtr oPtr, sizeOf (undefined :: o))
+  fingerprint o = unsafeDupablePerformIO $ with o $ \oPtr -> do
+    x <- fingerprint <$> BS.unsafePackCStringLen (castPtr oPtr, sizeOf (undefined :: o))
+    return $!! x
   {-# INLINE fingerprint #-}
 
 
@@ -86,11 +87,11 @@ instance Lift Fingerprint where
     return $ ConE 'FP 
       `AppE` (VarE 'fromJust 
       `AppE` (VarE 'digestFromByteString 
-      `AppE` (VarE 'unsafePerformIO 
+      `AppE` (VarE 'unsafeDupablePerformIO 
       `AppE` (VarE 'BS.unsafePackAddressLen
       `AppE` LitE (IntegerL $ fromIntegral $ BS.length bs)
       `AppE` LitE (StringPrimL (B.unpack bs))))))
-    where bs = unsafePerformIO (BA.withByteArray h (BS.packCStringLen . (,BA.length h)))
+    where bs = unsafeDupablePerformIO (BA.withByteArray h (BS.packCStringLen . (,BA.length h)))
 
 instance HasFingerprint ()
 instance HasFingerprint Word8

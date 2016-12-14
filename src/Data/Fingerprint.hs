@@ -50,18 +50,6 @@ class HasFingerprint o where
   {-# INLINE fingerprint #-}
 
 
-instance HasFingerprint (WithFingerprint a) where
-  fingerprint (WithFingerprint f _) = f
-  {-# INLINE fingerprint #-}
-
-instance HasFingerprint Fingerprint where
-  fingerprint = id
-  {-# INLINE fingerprint #-}
-
-instance HasFingerprint BS.ByteString where
-  fingerprint = FP . hash
-  {-# INLINE fingerprint #-}
-
 instance Monoid Fingerprint where
   mempty = FP (hashFinalize hashInit)
   {-# INLINE mempty #-}
@@ -92,6 +80,22 @@ instance Lift Fingerprint where
       `AppE` LitE (IntegerL $ fromIntegral $ BS.length bs)
       `AppE` LitE (StringPrimL (B.unpack bs))))))
     where bs = unsafeDupablePerformIO (BA.withByteArray h (BS.packCStringLen . (,BA.length h)))
+
+instance HasFingerprint (WithFingerprint a) where
+  fingerprint (WithFingerprint f _) = f
+  {-# INLINE fingerprint #-}
+
+instance HasFingerprint Fingerprint where
+  fingerprint = id
+  {-# INLINE fingerprint #-}
+
+instance HasFingerprint BS.ByteString where
+  fingerprint = FP . hash
+  {-# INLINE fingerprint #-}
+
+instance HasFingerprint String where
+  fingerprint = fingerprint . BS.pack
+  {-# INLINE fingerprint #-}
 
 instance HasFingerprint ()
 instance HasFingerprint Word8

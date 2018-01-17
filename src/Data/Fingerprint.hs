@@ -37,7 +37,9 @@ import           Foreign.Ptr (castPtr)
 import           Foreign.Storable (Storable, sizeOf)
 
 newtype Fingerprint = FP { unFP :: Digest SHA256 }
-  deriving (Eq, Ord, Show, NFData)
+  deriving (Eq, Ord, NFData)
+
+instance Show Fingerprint where show = show . unFP
 
 data WithFingerprint a = WithFingerprint Fingerprint a
   deriving (Eq, Ord, Show)

@@ -11,10 +11,13 @@ module Data.Fingerprint (
 , WithFingerprint (..)
 , HasFingerprint (..)
 , fp
+, fromByteString
+, sinkFingerprint
 ) where
 
 import           Control.DeepSeq (NFData(rnf), ($!!))
 import           Crypto.Hash
+import           Crypto.Hash.Conduit (sinkHash)
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BS
@@ -22,6 +25,7 @@ import qualified Data.ByteString.Unsafe as BS
 import           Data.Int
 import           Data.Word
 import           Data.Complex
+import           Data.Conduit (Consumer)
 import           Data.Maybe (fromJust)
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Quote
@@ -32,7 +36,7 @@ import           Foreign.C.Types
 import           Foreign.Ptr (castPtr)
 import           Foreign.Storable (Storable, sizeOf)
 
-newtype Fingerprint = FP { unFP :: Digest SHA1 }
+newtype Fingerprint = FP { unFP :: Digest SHA256 }
   deriving (Eq, Ord, Show, NFData)
 
 data WithFingerprint a = WithFingerprint Fingerprint a
@@ -40,6 +44,12 @@ data WithFingerprint a = WithFingerprint Fingerprint a
 
 instance NFData a => NFData (WithFingerprint a) where
   rnf (WithFingerprint f a) = rnf f `seq` rnf a
+
+fromByteString :: BS.ByteString -> Maybe Fingerprint
+fromByteString = fmap FP . digestFromByteString
+
+sinkFingerprint :: Monad m => Consumer BS.ByteString m Fingerprint
+sinkFingerprint = fmap FP sinkHash
 
 class HasFingerprint o where
   fingerprint :: o -> Fingerprint

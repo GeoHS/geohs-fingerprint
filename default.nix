@@ -1,5 +1,5 @@
 { mkDerivation, base, bytestring, cryptonite, deepseq, memory
-, stdenv, template-haskell, cryptonite-conduit, conduit, base16-byestring
+, stdenv, template-haskell, cryptonite-conduit, conduit, base16-bytestring
 }:
 mkDerivation {
   pname = "geohs-fingerprint";

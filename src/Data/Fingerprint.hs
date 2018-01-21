@@ -12,6 +12,9 @@ module Data.Fingerprint (
 , HasFingerprint (..)
 , fp
 , fromByteString
+, toByteString
+, fromByteString16
+, toByteString16
 , sinkFingerprint
 ) where
 
@@ -20,6 +23,7 @@ import           Crypto.Hash
 import           Crypto.Hash.Conduit (sinkHash)
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Unsafe as BS
 import           Data.Int
@@ -49,6 +53,19 @@ instance NFData a => NFData (WithFingerprint a) where
 
 fromByteString :: BS.ByteString -> Maybe Fingerprint
 fromByteString = fmap FP . digestFromByteString
+
+toByteString :: Fingerprint -> BS.ByteString
+toByteString (FP h) = unsafeDupablePerformIO $
+  BA.withByteArray h (BS.packCStringLen . (,BA.length h))
+
+fromByteString16 :: BS.ByteString -> Maybe Fingerprint
+fromByteString16 b16 =
+  case B16.decode b16 of
+    (bs,bad) | B.null bad -> fromByteString bs
+    _                     -> Nothing
+
+toByteString16 :: Fingerprint -> BS.ByteString
+toByteString16 = B16.encode . toByteString
 
 sinkFingerprint :: Monad m => Consumer BS.ByteString m Fingerprint
 sinkFingerprint = fmap FP sinkHash
@@ -83,7 +100,7 @@ fp = QuasiQuoter
   }
 
 instance Lift Fingerprint where
-  lift (FP h) =
+  lift fp_ =
     return $ ConE 'FP 
       `AppE` (VarE 'fromJust 
       `AppE` (VarE 'digestFromByteString 
@@ -91,7 +108,7 @@ instance Lift Fingerprint where
       `AppE` (VarE 'BS.unsafePackAddressLen
       `AppE` LitE (IntegerL $ fromIntegral $ BS.length bs)
       `AppE` LitE (StringPrimL (B.unpack bs))))))
-    where bs = unsafeDupablePerformIO (BA.withByteArray h (BS.packCStringLen . (,BA.length h)))
+    where bs = toByteString fp_
 
 instance HasFingerprint (WithFingerprint a) where
   fingerprint (WithFingerprint f _) = f

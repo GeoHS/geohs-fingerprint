@@ -87,6 +87,10 @@ instance Monoid Fingerprint where
   mconcat = FP . hashFinalize . hashUpdates hashInit . map unFP
   {-# INLINE mconcat #-}
 
+instance {-# OVERLAPPABLE #-} (Foldable f, HasFingerprint o) => HasFingerprint (f o) where
+  fingerprint = foldMap fingerprint
+  {-# INLINE fingerprint #-}
+
 fp ::QuasiQuoter
 fp = QuasiQuoter
   { quoteExp = \s -> do
